@@ -61,3 +61,56 @@ GROUP BY o.Order_ID, o.Order_Date, o.Total_Price, p.Payment_Method
 ORDER BY o.Order_Date DESC;
 
 SELECT * FROM vw_OrderSummary;
+
+-- 4.Inventory Quantity report
+CREATE OR REPLACE VIEW vw_ProductInventoryStatus AS
+SELECT 
+    p.Product_Name,
+    SUM(p.Stock_Quantity) AS TotalStockQuantity,
+    CASE 
+        WHEN SUM(p.Stock_Quantity) <= 0 THEN 'Out of Stock'
+        WHEN SUM(p.Stock_Quantity) BETWEEN 1 AND 50 THEN 'Low Stock'
+        ELSE 'In Stock'
+    END AS InventoryStatus
+FROM 
+    Products p
+GROUP BY 
+    p.Product_Name;
+    
+SELECT * FROM vw_ProductInventoryStatus;
+
+-- 5.Shows users and the products they have in their wishlist.
+CREATE OR REPLACE VIEW vw_UserWishlistProducts AS
+SELECT 
+    u.User_ID,
+    u.First_Name || ' ' || u.Last_Name AS FullName,
+    w.Wishlist_ID,
+    p.Product_ID,
+    p.Product_Name,
+    p.Actual_Price
+FROM 
+    Wishlist w
+JOIN Users u ON w.User_ID = u.User_ID
+JOIN Products p ON p.Product_ID IN (
+    SELECT Product_ID FROM OrderItems WHERE Order_ID IN (
+        SELECT Order_ID FROM Orders WHERE User_ID = u.User_ID
+    )
+);
+
+SELECT * FROM vw_UserWishlistProducts;
+
+-- 6. Lists products with average ratings and number of reviews.
+CREATE OR REPLACE VIEW vw_TopRatedProducts AS
+SELECT 
+    p.Product_ID,
+    p.Product_Name,
+    ROUND(AVG(r.Rating), 2) AS AvgRating,
+    COUNT(r.Review_ID) AS TotalReviews
+FROM 
+    Products p
+JOIN Reviews r ON p.Product_ID = r.Product_ID
+GROUP BY p.Product_ID, p.Product_Name
+HAVING COUNT(r.Review_ID) >= 3
+ORDER BY AvgRating DESC;
+
+SELECT * FROM vw_TopRatedProducts;
