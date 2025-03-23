@@ -114,3 +114,71 @@ HAVING COUNT(r.Review_ID) >= 3
 ORDER BY AvgRating DESC;
 
 SELECT * FROM vw_TopRatedProducts;
+
+-- 7. Shows total amount each customer has paid across orders.
+CREATE OR REPLACE VIEW vw_CustomerPaymentSummary AS
+SELECT 
+    u.User_ID,
+    u.First_Name || ' ' || u.Last_Name AS FullName,
+    COUNT(DISTINCT pay.Payment_ID) AS TotalPayments,
+    SUM(o.Total_Price) AS TotalPaid,
+    MAX(pay.Payment_Date) AS LastPaymentDate
+FROM 
+    Users u
+JOIN Orders o ON u.User_ID = o.User_ID
+JOIN Payments pay ON o.Order_ID = pay.Order_ID
+GROUP BY u.User_ID, u.First_Name, u.Last_Name;
+
+SELECT * FROM vw_CustomerPaymentSummary;
+
+--8. Shows total stock and number of products per category.
+
+CREATE OR REPLACE VIEW vw_CategoryWiseInventorySummary AS
+SELECT 
+    c.Category_Name,
+    COUNT(p.Product_ID) AS TotalProducts,
+    SUM(p.Stock_Quantity) AS TotalStock,
+    ROUND(AVG(p.Stock_Quantity), 2) AS AvgStockPerProduct
+FROM 
+    Categories c
+JOIN Products p ON c.Category_ID = p.Category_ID
+GROUP BY c.Category_Name;
+
+SELECT * FROM vw_CategoryWiseInventorySummary;
+
+--9. Summarizes number of orders and revenue per day.
+CREATE OR REPLACE VIEW vw_DailyOrderTrend AS
+SELECT 
+    TRUNC(o.Order_Date) AS OrderDay,
+    COUNT(o.Order_ID) AS TotalOrders,
+    SUM(o.Total_Price) AS TotalRevenue
+FROM 
+    Orders o
+WHERE 
+    o.Order_Status = 'Order Placed'
+GROUP BY TRUNC(o.Order_Date)
+ORDER BY OrderDay DESC;
+
+SELECT * FROM vw_DailyOrderTrend;
+
+--10 .Shows all products that were ordered by users but haven't been reviewed yet.
+CREATE OR REPLACE VIEW vw_OrdersWithoutReviews AS
+SELECT 
+    u.User_ID,
+    u.First_Name || ' ' || u.Last_Name AS CustomerName,
+    o.Order_ID,
+    o.Order_Date,
+    p.Product_ID,
+    p.Product_Name,
+    oi.Quantity
+FROM 
+    Orders o
+JOIN Users u ON o.User_ID = u.User_ID
+JOIN OrderItems oi ON o.Order_ID = oi.Order_ID
+JOIN Products p ON oi.Product_ID = p.Product_ID
+LEFT JOIN Reviews r ON r.User_ID = u.User_ID AND r.Product_ID = p.Product_ID
+WHERE 
+    o.Order_Status = 'Order Placed'
+    AND r.Review_ID IS NULL;
+
+SELECT * FROM vw_OrdersWithoutReviews;
